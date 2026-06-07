@@ -1,4 +1,4 @@
-const OTPService = require('../services/OTPService');
+const OTPService = require('../../services/otpService');
 const db = require('../config/db');
 const jwt = require('jsonwebtoken');
 
