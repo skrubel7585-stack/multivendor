@@ -7,7 +7,6 @@ const sendLoginOTP = async (req, res) => {
     try {
         const { phone } = req.body;
         
-        // ফোন নম্বর ভ্যালিডেশন
         if (!phone || phone.length !== 10) {
             return res.status(400).json({
                 success: false,
@@ -15,7 +14,7 @@ const sendLoginOTP = async (req, res) => {
             });
         }
         
-        const fullPhoneNumber = `91${phone}`; // ভারতের জন্য +91 যোগ করা
+        const fullPhoneNumber = `91${phone}`;
         
         console.log(`📱 Sending OTP to: ${fullPhoneNumber}`);
         
@@ -25,13 +24,13 @@ const sendLoginOTP = async (req, res) => {
             res.json({
                 success: true,
                 message: result.message,
-                // ডেভেলপমেন্টে OTP দেখান, প্রোডাকশনে দেখাবেন না
-                ...(process.env.NODE_ENV !== 'production' && { debug_otp: result.otp })
+                ...(process.env.NODE_ENV !== 'production' && { debug_otp: result.debug_otp })
             });
         } else {
             res.status(500).json({
                 success: false,
-                message: result.message || 'Failed to send OTP'
+                message: result.message || 'Failed to send OTP',
+                debug_code: result.debug_code
             });
         }
     } catch (error) {
@@ -57,7 +56,6 @@ const verifyOTPAndLogin = async (req, res) => {
         
         const fullPhoneNumber = `91${phone}`;
         
-        // OTP ভেরিফাই করুন
         const verification = OTPService.verifyOTP(fullPhoneNumber, otp);
         
         if (!verification.success) {
@@ -67,7 +65,6 @@ const verifyOTPAndLogin = async (req, res) => {
             });
         }
         
-        // চেক করুন ইউজার ডাটাবেসে আছে কিনা
         let user;
         let isNewUser = false;
         
@@ -77,7 +74,6 @@ const verifyOTPAndLogin = async (req, res) => {
         );
         
         if (existingUser.length === 0) {
-            // নতুন ইউজার তৈরি করুন
             isNewUser = true;
             const [result] = await db.execute(
                 'INSERT INTO users (phone, role, created_at) VALUES (?, ?, NOW())',
@@ -93,7 +89,6 @@ const verifyOTPAndLogin = async (req, res) => {
             user = existingUser[0];
         }
         
-        // JWT টোকেন জেনারেট করুন
         const accessToken = jwt.sign(
             { 
                 id: user.id, 
@@ -153,7 +148,7 @@ const resendOTP = async (req, res) => {
             res.json({
                 success: true,
                 message: 'OTP resent successfully',
-                ...(process.env.NODE_ENV !== 'production' && { debug_otp: result.otp })
+                ...(process.env.NODE_ENV !== 'production' && { debug_otp: result.debug_otp })
             });
         } else {
             res.status(500).json({
@@ -170,7 +165,7 @@ const resendOTP = async (req, res) => {
     }
 };
 
-// OTP স্ট্যাটাস চেক করুন
+// OTP স্ট্যাটাস চেক
 const getOTPStatus = async (req, res) => {
     try {
         const { phone } = req.query;
@@ -198,7 +193,7 @@ const getOTPStatus = async (req, res) => {
     }
 };
 
-// ডিবাগিং এর জন্য সব অ্যাক্টিভ OTP দেখা (শুধু ডেভেলপমেন্ট)
+// ডিবাগিং - সব অ্যাক্টিভ OTP (শুধু ডেভেলপমেন্ট)
 const getAllActiveOTPs = async (req, res) => {
     if (process.env.NODE_ENV === 'production') {
         return res.status(403).json({
